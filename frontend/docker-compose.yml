@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - quant-tool
+
+  backend:
+    # 后端服务配置（示例）
+    image: python:3.11
+    command: python app.py
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../:/app
+    working_dir: /app
+    networks:
+      - quant-tool
+
+networks:
+  quant-tool:
+    driver: bridge
