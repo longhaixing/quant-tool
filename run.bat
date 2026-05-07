@@ -1,3 +1,3 @@
 @echo off
 echo Starting Quant Tool Backend API...
-python -m uvicorn app:app --reload --host 0.0.0.0 --port 5000
+python -m uvicorn app:app --reload --host 0.0.0.0 --port 5111

@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://backend:5000
+      - VITE_API_URL=http://backend:5111
     depends_on:
       - backend
     networks:
@@ -17,7 +17,7 @@ services:
     image: python:3.11
     command: python app.py
     ports:
-      - "5000:5000"
+      - "5111:5111"
     volumes:
       - ../:/app
     working_dir: /app

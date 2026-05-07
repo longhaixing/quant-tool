@@ -1,6 +1,6 @@
 """
 Quant Tool API Server
-Start with: uvicorn app:app --reload --host 0.0.0.0 --port 5000
+Start with: uvicorn app:app --reload --host 0.0.0.0 --port 5111
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -467,4 +467,4 @@ def risk_analysis(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=5111)

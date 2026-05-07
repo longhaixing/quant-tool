@@ -13,7 +13,10 @@
       "Bash(taskkill //PID 20884 //F)",
       "Bash(npx vite *)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Strategies count: {len\\(d[\\\\\"strategies\\\\\"]\\)}'\\)\")",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Keys:', list\\(d.keys\\(\\)\\)\\); print\\('Stats:', d['stats']\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Keys:', list\\(d.keys\\(\\)\\)\\); print\\('Stats:', d['stats']\\)\")",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -r taskkill //PID {} //F)",
+      "Bash(python -m uvicorn app:app --reload --host 0.0.0.0 --port 5111)"
     ]
   }
 }
