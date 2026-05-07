@@ -4,7 +4,16 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
       "Bash(netstat -ano)",
       "Bash(curl *)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(pip install *)",
+      "Bash(python -c \"from quant_tool.data import DataFetcher; from quant_tool.backtest import BacktestEngine; from quant_tool.risk import RiskManager; from quant_tool.strategies import MAStrategy; from fastapi import FastAPI; print\\('All imports OK'\\)\")",
+      "Bash(python -m uvicorn app:app --host 0.0.0.0 --port 5000)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)[:300]\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Rows: {d[\\\\\"total\\\\\"]}'\\); print\\(json.dumps\\(d['data'][:2], indent=2, ensure_ascii=False\\)[:400]\\)\")",
+      "Bash(taskkill //PID 20884 //F)",
+      "Bash(npx vite *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Strategies count: {len\\(d[\\\\\"strategies\\\\\"]\\)}'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Keys:', list\\(d.keys\\(\\)\\)\\); print\\('Stats:', d['stats']\\)\")"
     ]
   }
 }

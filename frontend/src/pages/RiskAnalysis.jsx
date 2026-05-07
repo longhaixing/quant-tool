@@ -1,7 +1,5 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -10,90 +8,68 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   ScatterChart,
   Scatter,
 } from 'recharts'
 import StatCard from '../components/StatCard'
 import { AlertTriangle, TrendingDown, Zap } from 'lucide-react'
+import { fetchRiskAnalysis } from '../services/api'
 
 function RiskAnalysis() {
-  const drawdownData = [
-    { date: '2024-01-01', drawdown: 0, position: 100 },
-    { date: '2024-01-05', drawdown: -2.5, position: 97.5 },
-    { date: '2024-01-10', drawdown: -5.2, position: 94.8 },
-    { date: '2024-01-15', drawdown: -3.8, position: 96.2 },
-    { date: '2024-01-20', drawdown: -8.5, position: 91.5 },
-    { date: '2024-01-25', drawdown: -5.1, position: 94.9 },
-  ]
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const volatilityData = [
-    { period: '1月', volatility: 12.5, expectedReturn: 2.8 },
-    { period: '2月', volatility: 14.2, expectedReturn: 3.1 },
-    { period: '3月', volatility: 11.8, expectedReturn: -1.5 },
-    { period: '4月', volatility: 13.5, expectedReturn: 4.2 },
-    { period: '5月', volatility: 12.1, expectedReturn: 2.8 },
-    { period: '6月', volatility: 13.8, expectedReturn: 3.5 },
-  ]
+  useEffect(() => {
+    fetchRiskAnalysis({ symbol: 'AAPL', startDate: '2024-01-01', endDate: '2024-06-30' }).then((result) => {
+      setData(result)
+      setLoading(false)
+    })
+  }, [])
 
-  const riskDistribution = [
-    { name: 'VaR 95%', value: -8.5 },
-    { name: 'VaR 99%', value: -12.3 },
-    { name: 'CVaR 95%', value: -15.2 },
-    { name: '最大回撤', value: -12.5 },
-  ]
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <p className="text-gray-500 text-lg">加载中...</p>
+      </div>
+    )
+  }
 
-  const correlationMatrix = [
-    { asset1: 'AAPL', asset2: 'MSFT', correlation: 0.82 },
-    { asset1: 'AAPL', asset2: 'GOOGL', correlation: 0.75 },
-    { asset1: 'MSFT', asset2: 'GOOGL', correlation: 0.88 },
-    { asset1: 'AAPL', asset2: '沪深 300', correlation: 0.45 },
-  ]
+  const { stats, drawdownData, volatilityData, riskMetrics, correlationMatrix, warnings } = data
+
+  const colorMap = {
+    red: TrendingDown,
+    orange: AlertTriangle,
+    green: TrendingDown,
+  }
+
+  const warningConfig = {
+    warning: { bg: 'bg-yellow-50 border-yellow-200', icon: 'text-yellow-600', title: 'text-yellow-900', msg: 'text-yellow-700' },
+    danger: { bg: 'bg-red-50 border-red-200', icon: 'text-red-600', title: 'text-red-900', msg: 'text-red-700' },
+    info: { bg: 'bg-blue-50 border-blue-200', icon: 'text-blue-600', title: 'text-blue-900', msg: 'text-blue-700' },
+  }
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900">风险分析</h2>
         <p className="text-gray-600 mt-2">全面的风险评估和监控</p>
       </div>
 
-      {/* Risk Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="最大回撤"
-          value="-12.5%"
-          change="-2.1"
-          icon={TrendingDown}
-          color="red"
-        />
-        <StatCard
-          title="波动率"
-          value="13.2%"
-          change="1.5"
-          icon={Zap}
-          color="orange"
-        />
-        <StatCard
-          title="VaR (95%)"
-          value="-8.5%"
-          change="0.8"
-          icon={AlertTriangle}
-          color="red"
-        />
-        <StatCard
-          title="风险等级"
-          value="中"
-          change="0"
-          icon={AlertTriangle}
-          color="orange"
-        />
+        {stats.map((stat, idx) => (
+          <StatCard
+            key={idx}
+            title={stat.title}
+            value={stat.value}
+            change={stat.change}
+            icon={colorMap[stat.color] || Zap}
+            color={stat.color}
+          />
+        ))}
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Drawdown Chart */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">回撤分析</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -125,7 +101,6 @@ function RiskAnalysis() {
           </ResponsiveContainer>
         </div>
 
-        {/* Volatility Chart */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">风险-收益散点</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -151,24 +126,18 @@ function RiskAnalysis() {
                   borderRadius: '8px',
                 }}
               />
-              <Scatter
-                name="月度数据"
-                data={volatilityData}
-                fill="#3b82f6"
-              />
+              <Scatter name="月度数据" data={volatilityData} fill="#3b82f6" />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Risk Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* VaR Analysis */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">风险指标对比</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
-              data={riskDistribution}
+              data={riskMetrics}
               layout="vertical"
               margin={{ top: 5, right: 30, left: 200 }}
             >
@@ -187,7 +156,6 @@ function RiskAnalysis() {
           </ResponsiveContainer>
         </div>
 
-        {/* Correlation Matrix */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">资产相关性</h3>
           <div className="space-y-3">
@@ -200,9 +168,7 @@ function RiskAnalysis() {
                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${
-                        item.correlation > 0.75
-                          ? 'bg-red-500'
-                          : 'bg-yellow-500'
+                        item.correlation > 0.75 ? 'bg-red-500' : 'bg-yellow-500'
                       }`}
                       style={{ width: `${item.correlation * 100}%` }}
                     ></div>
@@ -217,39 +183,21 @@ function RiskAnalysis() {
         </div>
       </div>
 
-      {/* Risk Warnings */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">风险警告</h3>
         <div className="space-y-3">
-          <div className="flex gap-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-yellow-900">注意：高波动性时期</p>
-              <p className="text-sm text-yellow-700 mt-1">
-                最近 7 天内波动率达到 15.2%，超过历史平均值（13.2%）
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-red-900">风险：回撤接近最大值</p>
-              <p className="text-sm text-red-700 mt-1">
-                当前回撤为 -12.1%，接近历史最大回撤 -12.5%
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900">信息：高相关性风险</p>
-              <p className="text-sm text-blue-700 mt-1">
-                您的投资组合中 AAPL、MSFT、GOOGL 相关性较高，建议增加多元化
-              </p>
-            </div>
-          </div>
+          {warnings.map((w, idx) => {
+            const cfg = warningConfig[w.type] || warningConfig.info
+            return (
+              <div key={idx} className={`flex gap-4 p-4 border rounded-lg ${cfg.bg}`}>
+                <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${cfg.icon}`} />
+                <div>
+                  <p className={`font-medium ${cfg.title}`}>{w.title}</p>
+                  <p className={`text-sm mt-1 ${cfg.msg}`}>{w.message}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

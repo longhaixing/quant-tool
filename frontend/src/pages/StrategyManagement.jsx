@@ -1,64 +1,59 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, Play, Pause } from 'lucide-react'
+import {
+  fetchStrategies,
+  createStrategy,
+  toggleStrategy as toggleStrategyApi,
+  deleteStrategy as deleteStrategyApi,
+} from '../services/api'
 
 function StrategyManagement() {
-  const [strategies, setStrategies] = useState([
-    {
-      id: 1,
-      name: 'MA 交叉策略',
-      description: '简单的移动平均线交叉策略',
-      status: 'active',
-      return: '12.5%',
-      sharpe: '1.85',
-      maxDrawdown: '-8.2%',
-      trades: 45,
-    },
-    {
-      id: 2,
-      name: 'RSI 反转',
-      description: 'RSI 超买超卖信号反转策略',
-      status: 'paused',
-      return: '8.3%',
-      sharpe: '1.32',
-      maxDrawdown: '-5.1%',
-      trades: 28,
-    },
-    {
-      id: 3,
-      name: '动量策略',
-      description: '基于动量指标的趋势跟踪',
-      status: 'active',
-      return: '15.2%',
-      sharpe: '2.15',
-      maxDrawdown: '-12.5%',
-      trades: 62,
-    },
-    {
-      id: 4,
-      name: '均值回归',
-      description: '布林带均值回归策略',
-      status: 'draft',
-      return: '5.8%',
-      sharpe: '0.98',
-      maxDrawdown: '-3.8%',
-      trades: 15,
-    },
-  ])
-
+  const [strategies, setStrategies] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
 
+  useEffect(() => {
+    fetchStrategies().then((data) => {
+      setStrategies(data)
+      setLoading(false)
+    })
+  }, [])
+
   const toggleStrategy = (id) => {
-    setStrategies(
-      strategies.map((s) =>
-        s.id === id
-          ? { ...s, status: s.status === 'active' ? 'paused' : 'active' }
-          : s
-      )
-    )
+    toggleStrategyApi(id).then((updated) => {
+      if (updated) {
+        setStrategies((prev) =>
+          prev.map((s) => (s.id === id ? updated : s))
+        )
+      } else {
+        setStrategies((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? { ...s, status: s.status === 'active' ? 'paused' : 'active' }
+              : s
+          )
+        )
+      }
+    })
   }
 
   const deleteStrategy = (id) => {
-    setStrategies(strategies.filter((s) => s.id !== id))
+    deleteStrategyApi(id).then(() => {
+      setStrategies((prev) => prev.filter((s) => s.id !== id))
+    })
+  }
+
+  const handleCreate = (e) => {
+    e.preventDefault()
+    const form = e.target
+    const name = form.elements.name.value
+    const description = form.elements.description.value
+    if (!name) return
+    createStrategy({ name, description, type: 'custom' }).then((newStrategy) => {
+      setStrategies((prev) => [...prev, newStrategy])
+      setShowForm(false)
+      form.reset()
+    })
   }
 
   const getStatusColor = (status) => {
@@ -87,9 +82,16 @@ function StrategyManagement() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <p className="text-gray-500 text-lg">加载中...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">策略管理</h2>
@@ -104,11 +106,10 @@ function StrategyManagement() {
         </button>
       </div>
 
-      {/* New Strategy Form */}
       {showForm && (
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">创建新策略</h3>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleCreate}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -116,6 +117,7 @@ function StrategyManagement() {
                 </label>
                 <input
                   type="text"
+                  name="name"
                   placeholder="输入策略名称"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                 />
@@ -124,7 +126,10 @@ function StrategyManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   策略类型
                 </label>
-                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <select
+                  name="type"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                >
                   <option>选择类型</option>
                   <option>移动平均线</option>
                   <option>RSI 指标</option>
@@ -138,6 +143,7 @@ function StrategyManagement() {
                 描述
               </label>
               <textarea
+                name="description"
                 placeholder="输入策略描述"
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
@@ -162,14 +168,12 @@ function StrategyManagement() {
         </div>
       )}
 
-      {/* Strategies Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {strategies.map((strategy) => (
           <div
             key={strategy.id}
             className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6"
           >
-            {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -186,7 +190,6 @@ function StrategyManagement() {
               </span>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-2 gap-4 my-4 p-4 bg-gray-50 rounded-lg">
               <div>
                 <p className="text-xs text-gray-600">总收益</p>
@@ -206,7 +209,6 @@ function StrategyManagement() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2 pt-4 border-t border-gray-100">
               <button
                 onClick={() => toggleStrategy(strategy.id)}
