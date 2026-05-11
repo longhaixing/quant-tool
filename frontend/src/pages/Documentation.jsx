@@ -71,7 +71,7 @@ from quant_tool.data import DataFetcher
 
 # 获取数据
 fetcher = DataFetcher()
-data = fetcher.fetch_price_data('AAPL', '2020-01-01', '2023-01-01')
+data = fetcher.fetch_price_data('000001', '2020-01-01', '2023-01-01')
 
 # 创建策略
 strategy = MyStrategy()
@@ -124,11 +124,11 @@ var = risk_mgr.calculate_var(returns_series, confidence=0.95)
         <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg mb-4 text-sm overflow-x-auto">
 from quant_tool.data import DataFetcher
 
-fetcher = DataFetcher(source='yfinance', cache_dir='./data_cache')
+fetcher = DataFetcher()
 
-# 获取单个股票数据
+# 获取单个股票数据（A股代码）
 data = fetcher.fetch_price_data(
-    symbol='AAPL',
+    symbol='000001',       # 平安银行
     start_date='2023-01-01',
     end_date='2024-01-01',
     interval='1d'
@@ -136,7 +136,7 @@ data = fetcher.fetch_price_data(
 
 # 获取多个股票数据
 data_dict = fetcher.fetch_multiple_symbols(
-    symbols=['AAPL', 'MSFT', 'GOOGL'],
+    symbols=['000001', '600519', '000858'],
     start_date='2023-01-01',
     end_date='2024-01-01'
 )

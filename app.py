@@ -24,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-fetcher = DataFetcher(source="yfinance")
+fetcher = DataFetcher()
 risk_manager = RiskManager()
 
 # In-memory strategy store (seeded with defaults)
@@ -85,7 +85,7 @@ def dashboard_summary():
     try:
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
-        df = _get_or_fetch("AAPL", start, end)
+        df = _get_or_fetch("000001", start, end)
 
         engine = BacktestEngine(initial_capital=100000, commission=0.001)
         strategy = MAStrategy(short_window=20, long_window=50)
@@ -219,7 +219,7 @@ def delete_strategy(strategy_id: int):
 
 @app.get("/market-data")
 def get_market_data(
-    symbol: str = Query("AAPL"),
+    symbol: str = Query("000001"),
     startDate: str = Query("2024-01-01"),
     endDate: str = Query("2024-01-25"),
 ):
@@ -238,7 +238,7 @@ def get_market_data(
 
 @app.get("/backtest")
 def run_backtest(
-    symbol: str = Query("AAPL"),
+    symbol: str = Query("000001"),
     startDate: str = Query("2024-01-01"),
     endDate: str = Query("2024-06-30"),
     strategy_id: Optional[int] = Query(None),
@@ -341,7 +341,7 @@ def run_backtest(
 
 @app.get("/risk-analysis")
 def risk_analysis(
-    symbol: str = Query("AAPL"),
+    symbol: str = Query("000001"),
     startDate: str = Query("2024-01-01"),
     endDate: str = Query("2024-06-30"),
 ):
@@ -388,7 +388,7 @@ def risk_analysis(
             })
 
         # Multi-asset correlation
-        symbols = ["AAPL", "MSFT", "GOOGL"]
+        symbols = ["000001", "600519", "000858"]
         returns_dict = {}
         for sym in symbols:
             try:
@@ -398,7 +398,7 @@ def risk_analysis(
                 continue
         corr_df = risk_manager.calculate_correlation_matrix(returns_dict)
         correlationMatrix = []
-        pairs = [("AAPL", "MSFT"), ("AAPL", "GOOGL"), ("MSFT", "GOOGL")]
+        pairs = [("000001", "600519"), ("000001", "000858"), ("600519", "000858")]
         for a1, a2 in pairs:
             if a1 in corr_df.index and a2 in corr_df.columns:
                 correlationMatrix.append({
@@ -408,9 +408,9 @@ def risk_analysis(
                 })
         if not correlationMatrix:
             correlationMatrix = [
-                {"asset1": "AAPL", "asset2": "MSFT", "correlation": 0.82},
-                {"asset1": "AAPL", "asset2": "GOOGL", "correlation": 0.75},
-                {"asset1": "MSFT", "asset2": "GOOGL", "correlation": 0.88},
+                {"asset1": "000001", "asset2": "600519", "correlation": 0.72},
+                {"asset1": "000001", "asset2": "000858", "correlation": 0.65},
+                {"asset1": "600519", "asset2": "000858", "correlation": 0.78},
             ]
 
         # Stats
