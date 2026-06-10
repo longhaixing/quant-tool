@@ -17,8 +17,10 @@ function DataViewer() {
   const loadData = () => {
     setLoading(true)
     fetchMarketData({ symbol, startDate, endDate }).then((result) => {
-      setRows(result.data)
-      setTotal(result.total)
+      console.log('[DataViewer] API result:', result)
+      console.log('[DataViewer] rows count:', result.data?.length)
+      setRows(result.data || [])
+      setTotal(result.total || 0)
       setLoading(false)
     })
   }
@@ -116,6 +118,8 @@ function DataViewer() {
 
         {loading ? (
           <p className="text-gray-500 py-8 text-center">加载中...</p>
+        ) : rows.length === 0 ? (
+          <p className="text-gray-500 py-8 text-center">没有查到数据，请检查股票代码和日期范围</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
