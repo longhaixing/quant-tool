@@ -6,6 +6,7 @@ function StatCard({ title, value, change, icon: Icon, color = 'blue' }) {
     green: 'bg-green-50',
     red: 'bg-red-50',
     purple: 'bg-purple-50',
+    gray: 'bg-gray-50',
   }[color] || 'bg-blue-50'
 
   const textColor = {
@@ -13,9 +14,11 @@ function StatCard({ title, value, change, icon: Icon, color = 'blue' }) {
     green: 'text-green-600',
     red: 'text-red-600',
     purple: 'text-purple-600',
+    gray: 'text-gray-500',
   }[color] || 'text-blue-600'
 
-  const changeColor = parseFloat(change) >= 0 ? 'text-green-600' : 'text-red-600'
+  const changeColor = value === 'N/A' ? 'text-gray-400' :
+    (parseFloat(change) >= 0 ? 'text-green-600' : 'text-red-600')
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

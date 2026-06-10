@@ -221,6 +221,8 @@ def get_market_data(
 ):
     try:
         df = _get_or_fetch(symbol.upper(), startDate, endDate)
+        if df.empty:
+            return {"data": [], "total": 0}
         df["volume"] = df["volume"].apply(
             lambda v: f"{v/1_000_000:.1f}M" if v >= 1_000_000 else str(int(v))
         )
@@ -242,7 +244,10 @@ def run_backtest(
     try:
         df = _get_or_fetch(symbol.upper(), startDate, endDate)
         if len(df) < 50:
-            raise HTTPException(status_code=400, detail="Not enough data for backtest")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough data for backtest ({len(df)} rows, need ≥ 50)"
+            )
 
         strategy = MAStrategy(short_window=20, long_window=50)
         for s in _strategies:
@@ -342,6 +347,20 @@ def risk_analysis(
 ):
     try:
         df = _get_or_fetch(symbol.upper(), startDate, endDate)
+        if df.empty:
+            return {
+                "stats": [
+                    {"title": "最大回撤", "value": "N/A", "change": "0", "color": "gray"},
+                    {"title": "波动率", "value": "N/A", "change": "0", "color": "gray"},
+                    {"title": "VaR (95%)", "value": "N/A", "change": "0", "color": "gray"},
+                    {"title": "风险等级", "value": "N/A", "change": "0", "color": "gray"},
+                ],
+                "drawdownData": [],
+                "volatilityData": [],
+                "riskMetrics": [],
+                "correlationMatrix": [],
+                "warnings": [],
+            }
         daily_returns = df["close"].pct_change().dropna()
 
         volatility = risk_manager.calculate_volatility(daily_returns)

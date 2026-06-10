@@ -23,18 +23,24 @@ class AkShareSource(DataSource):
         start = start_date.replace("-", "")
         end = end_date.replace("-", "")
 
-        df = ak.stock_zh_a_hist(
-            symbol=symbol,
-            period=period,
-            start_date=start,
-            end_date=end,
-            adjust="",
-        )
-        if df.empty:
-            raise ValueError(
-                f"No data found for symbol {symbol} "
-                f"in range {start_date} to {end_date}"
+        try:
+            df = ak.stock_zh_a_hist(
+                symbol=symbol,
+                period=period,
+                start_date=start,
+                end_date=end,
+                adjust="",
             )
+        except Exception:
+            # akshare remote API may refuse future dates or stale connections
+            # Gracefully return empty DataFrame instead of raising
+            df = pd.DataFrame(columns=list(self._COLUMN_MAP.values()))
+            return df
+
+        if df.empty:
+            # No data for this range — return an empty DataFrame with correct columns
+            df = pd.DataFrame(columns=list(self._COLUMN_MAP.values()))
+            return df
 
         df = df.rename(columns=self._COLUMN_MAP)
         df = df[list(self._COLUMN_MAP.values())]
