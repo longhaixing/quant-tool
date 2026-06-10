@@ -3,6 +3,7 @@ Quant Tool API Server
 Start with: uvicorn app:app --reload --host 0.0.0.0 --port 5111
 """
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Optional
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ app = FastAPI(title="Quant Tool API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,19 +57,14 @@ _strategies = [
 ]
 _next_id = 5
 
-# Simple in-memory cache for market data
-_cache: dict = {}
-
-
-def _cache_key(symbol, start, end):
-    return f"{symbol}_{start}_{end}"
+# Bounded cache for market data (LRU, max 128 entries)
+@lru_cache(maxsize=128)
+def _fetch_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+    return fetcher.fetch_price_data(symbol, start_date, end_date)
 
 
 def _get_or_fetch(symbol, start_date, end_date):
-    key = _cache_key(symbol, start_date, end_date)
-    if key not in _cache:
-        _cache[key] = fetcher.fetch_price_data(symbol, start_date, end_date)
-    return _cache[key].copy()
+    return _fetch_data(symbol, start_date, end_date).copy()
 
 
 # ─── Health ───────────────────────────────────────────────────────────────────
@@ -279,18 +275,17 @@ def run_backtest(
         ).reset_index().tail(6).fillna(0)
         monthlyData = monthly.to_dict(orient="records")
 
-        # Key metrics
-        trade_pnl = results[results["position"].diff().fillna(0) != 0]["strategy_return"]
-        wins = trade_pnl[trade_pnl > 0]
-        losses = trade_pnl[trade_pnl < 0]
+        # Key metrics (use engine's per-trade PnL)
+        avg_profit_val = metrics.get("avg_profit", 0) * metrics["initial_capital"]
+        avg_loss_val = metrics.get("avg_loss", 0) * metrics["initial_capital"]
         keyMetrics = {
             "initialCapital": f"¥{metrics['initial_capital']:,.0f}",
             "finalCapital": f"¥{metrics.get('final_value', 0):,.0f}",
             "totalTrades": metrics.get("total_trades", 0),
             "wins": metrics.get("winning_trades", 0),
             "losses": metrics.get("losing_trades", 0),
-            "averageProfit": f"¥{wins.mean() * 100:.0f}" if len(wins) > 0 else "¥0",
-            "averageLoss": f"-¥{abs(losses.mean()) * 100:.0f}" if len(losses) > 0 else "¥0",
+            "averageProfit": f"¥{avg_profit_val:.0f}" if avg_profit_val > 0 else "¥0",
+            "averageLoss": f"-¥{abs(avg_loss_val):.0f}" if avg_loss_val < 0 else "¥0",
         }
 
         # Risk metrics

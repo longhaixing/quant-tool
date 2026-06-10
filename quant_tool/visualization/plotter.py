@@ -12,7 +12,7 @@ class Plotter:
     Visualization tools for plotting trading data and results.
     """
     
-    def __init__(self, style: str = "seaborn"):
+    def __init__(self, style: str = "seaborn-v0_8"):
         """
         Initialize Plotter
         

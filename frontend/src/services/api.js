@@ -86,7 +86,7 @@ export async function deleteStrategy(id) {
     return true
   } catch (error) {
     console.warn('API delete strategy failed:', error.message)
-    return true
+    return false
   }
 }
 
@@ -94,7 +94,7 @@ export async function deleteStrategy(id) {
 
 export async function fetchMarketData(params = {}) {
   const p = {
-    symbol: params.symbol || 'AAPL',
+    symbol: params.symbol || '000001',  // A-share stock code (e.g. 000001 = 平安银行)
     startDate: params.startDate || '2024-01-01',
     endDate: params.endDate || '2024-01-25',
   }
@@ -111,7 +111,7 @@ export async function fetchMarketData(params = {}) {
 
 export async function fetchBacktestResults(params = {}) {
   const p = {
-    symbol: params.symbol || 'AAPL',
+    symbol: params.symbol || '000001',  // A-share stock code
     startDate: params.startDate || '2024-01-01',
     endDate: params.endDate || '2024-06-30',
     strategy_id: params.strategy_id,
@@ -123,7 +123,7 @@ export async function fetchBacktestResults(params = {}) {
 
 export async function fetchRiskAnalysis(params = {}) {
   const p = {
-    symbol: params.symbol || 'AAPL',
+    symbol: params.symbol || '000001',  // A-share stock code
     startDate: params.startDate || '2024-01-01',
     endDate: params.endDate || '2024-06-30',
   }

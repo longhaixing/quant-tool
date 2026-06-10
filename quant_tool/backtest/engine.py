@@ -101,10 +101,60 @@ class BacktestEngine:
         drawdown = (cumulative - rolling_max) / rolling_max
         max_drawdown = drawdown.min() * 100
 
-        trade_signals = df["position"].diff().fillna(0)
-        total_trades = int((trade_signals != 0).sum())
-        winning_trades = int((df.loc[trade_signals[df["position"] == 1].index, "strategy_return"] > 0).sum()) if total_trades > 0 else 0
-        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0.0
+        # ── Proper trade-level tracking ──────────────────────────────────
+        # A trade opens when position goes from 0 → ±1 (entry) or flips
+        #   ±1 → ∓1 (close old + open new same day).
+        # A trade closes when position goes ±1 → 0 (exit) or flips.
+        # Per-trade PnL = sum of strategy_return from day AFTER entry
+        #   through day OF exit (inclusive), since strategy_return[i] uses
+        #   position[i-1].
+        pos = df["position"]
+        pos_prev = pos.shift(1).fillna(0)
+
+        entries = (pos != 0) & (pos_prev == 0)    # 0 → ±1 : open
+        exits   = (pos == 0) & (pos_prev != 0)    # ±1 → 0  : close
+        flips   = (pos * pos_prev < 0)             # ±1 → ∓1 : flip
+
+        # Scan the series to pair entries with exits
+        trade_pnls: list[float] = []
+        in_trade = False
+        entry_idx = -1
+        for i in range(len(df)):
+            if entries.iloc[i] or flips.iloc[i]:
+                if in_trade and entry_idx >= 0:
+                    # Close previous trade (includes flip-day return)
+                    trade_pnls.append(
+                        float(df["strategy_return"].iloc[entry_idx + 1 : i + 1].sum())
+                    )
+                entry_idx = i
+                in_trade = True
+            elif exits.iloc[i] and in_trade:
+                trade_pnls.append(
+                    float(df["strategy_return"].iloc[entry_idx + 1 : i + 1].sum())
+                )
+                in_trade = False
+
+        # Close any position still open at end of data
+        if in_trade and entry_idx >= 0:
+            trade_pnls.append(
+                float(df["strategy_return"].iloc[entry_idx + 1 :].sum())
+            )
+
+        total_trades = len(trade_pnls)
+        if total_trades > 0:
+            winning_trades = sum(1 for pnl in trade_pnls if pnl > 0)
+            losing_trades  = sum(1 for pnl in trade_pnls if pnl < 0)
+            win_rate = (winning_trades / total_trades * 100)
+            winners = [pnl for pnl in trade_pnls if pnl > 0]
+            losers  = [pnl for pnl in trade_pnls if pnl < 0]
+            avg_profit = float(np.mean(winners)) if winners else 0.0
+            avg_loss   = float(np.mean(losers))  if losers  else 0.0
+        else:
+            winning_trades = 0
+            losing_trades  = 0
+            win_rate = 0.0
+            avg_profit = 0.0
+            avg_loss   = 0.0
 
         return {
             "total_return": round(float(total_return), 2),
@@ -115,7 +165,9 @@ class BacktestEngine:
             "total_trades": total_trades,
             "win_rate": round(float(win_rate), 1),
             "winning_trades": winning_trades,
-            "losing_trades": int(total_trades - winning_trades),
+            "losing_trades": losing_trades,
+            "avg_profit": round(avg_profit, 6),
+            "avg_loss": round(avg_loss, 6),
         }
     
     def get_results(self) -> Dict[str, Any]:

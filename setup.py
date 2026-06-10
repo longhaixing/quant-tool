@@ -19,11 +19,15 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     install_requires=[
         "numpy>=1.21.0",
         "pandas>=1.3.0",
         "matplotlib>=3.4.0",
+        "fastapi>=0.104.0",
+        "uvicorn[standard]>=0.24.0",
+        "akshare>=1.16.0",
+        "scipy>=1.10.0",
     ],
     extras_require={
         "dev": [

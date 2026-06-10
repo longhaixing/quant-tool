@@ -120,10 +120,10 @@ export const RISK_ANALYSIS_MOCK = {
     { name: '最大回撤', value: -12.5 },
   ],
   correlationMatrix: [
-    { asset1: 'AAPL', asset2: 'MSFT', correlation: 0.82 },
-    { asset1: 'AAPL', asset2: 'GOOGL', correlation: 0.75 },
-    { asset1: 'MSFT', asset2: 'GOOGL', correlation: 0.88 },
-    { asset1: 'AAPL', asset2: '沪深 300', correlation: 0.45 },
+    { asset1: '000001', asset2: '600519', correlation: 0.72 },
+    { asset1: '000001', asset2: '000858', correlation: 0.65 },
+    { asset1: '600519', asset2: '000858', correlation: 0.78 },
+    { asset1: '000001', asset2: '沪深 300', correlation: 0.45 },
   ],
   warnings: [
     {
@@ -139,7 +139,7 @@ export const RISK_ANALYSIS_MOCK = {
     {
       type: 'info',
       title: '信息：高相关性风险',
-      message: '您的投资组合中 AAPL、MSFT、GOOGL 相关性较高，建议增加多元化',
+      message: '您的投资组合中 000001、600519、000858 相关性较高，建议增加多元化',
     },
   ],
 }
