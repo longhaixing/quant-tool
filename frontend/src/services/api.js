@@ -12,6 +12,31 @@ const api = axios.create({
   timeout: 15000,
 })
 
+// ─── Auth interceptor — attach Bearer token to every request ────────
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// ─── Auth interceptor — redirect to login on 401 ────────────────────
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      // Only redirect if not already on an auth page
+      if (!window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/register')) {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 async function fetchWithFallback(url, mockData, params = {}) {
   try {
     const response = await api.get(url, { params })
@@ -118,6 +143,8 @@ export async function fetchBacktestResults(params = {}) {
   }
   return fetchWithFallback('/backtest', BACKTEST_MOCK, p)
 }
+
+export { api }
 
 // ─── Risk Analysis ───────────────────────────────────────────────────
 

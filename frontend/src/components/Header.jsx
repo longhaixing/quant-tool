@@ -1,7 +1,9 @@
 import React from 'react'
 import { Menu, Bell, User, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
-function Header({ onMenuClick }) {
+function Header({ onMenuClick, onLogout }) {
+  const { user } = useAuth()
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
       {/* Left */}
@@ -26,13 +28,16 @@ function Header({ onMenuClick }) {
         {/* User Menu */}
         <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
           <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">用户</p>
-            <p className="text-xs text-gray-500">管理员</p>
+            <p className="text-sm font-medium text-gray-900">{user?.username || '用户'}</p>
+            <p className="text-xs text-gray-500">{user?.role === 'admin' ? '管理员' : '用户'}</p>
           </div>
           <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <User className="w-6 h-6 text-gray-700" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-red-600">
+          <button
+            onClick={onLogout}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-red-600"
+          >
             <LogOut className="w-5 h-5" />
           </button>
         </div>

@@ -7,13 +7,20 @@ from functools import lru_cache
 from typing import Optional
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from quant_tool.data import DataFetcher
 from quant_tool.backtest import BacktestEngine
 from quant_tool.risk import RiskManager
 from quant_tool.strategies import MAStrategy
+from quant_tool.auth import (
+    create_access_token,
+    get_current_user,
+    get_optional_user,
+    get_user_repo,
+    User,
+)
 
 app = FastAPI(title="Quant Tool API", version="0.1.0")
 
@@ -27,6 +34,47 @@ app.add_middleware(
 
 fetcher = DataFetcher()
 risk_manager = RiskManager()
+
+# ─── Auth setup ──────────────────────────────────────────────────────────────
+user_repo = get_user_repo()
+# Seed a default admin user (exists only after first registration)
+# Run once: POST /auth/register with {"username":"admin","password":"admin123"}
+
+
+@app.post("/auth/register")
+def register(body: dict):
+    username = body.get("username", "").strip()
+    password = body.get("password", "")
+    if not username or len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    if not password or len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    user = user_repo.add(username, password)
+    if user is None:
+        raise HTTPException(status_code=409, detail="Username already exists")
+    token = create_access_token(user.username, user.id)
+    return {"token": token, "username": user.username, "role": user.role}
+
+
+@app.post("/auth/login")
+def login(body: dict):
+    username = body.get("username", "").strip()
+    password = body.get("password", "")
+    user = user_repo.authenticate(username, password)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token(user.username, user.id)
+    return {"token": token, "username": user.username, "role": user.role}
+
+
+@app.get("/auth/me")
+def me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "role": current_user.role,
+        "created_at": current_user.created_at.isoformat(),
+    }
 
 # In-memory strategy store (seeded with defaults)
 _strategies = [
@@ -77,7 +125,7 @@ def health():
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
 @app.get("/dashboard/summary")
-def dashboard_summary():
+def dashboard_summary(current_user: User = Depends(get_current_user)):
     try:
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
@@ -97,7 +145,7 @@ def dashboard_summary():
             perf_val = round(float(100 + row.get("cumulative_return", 0)), 1)
             benchmark_val = round(float(perf_val * 0.92), 1)  # synthetic benchmark
             performanceData.append({
-                "date": row["date"][5:],  # MM-DD
+                "date": str(row["date"])[5:],  # MM-DD
                 "收益": perf_val,
                 "基准": benchmark_val,
             })
@@ -160,12 +208,12 @@ def dashboard_summary():
 # ─── Strategies CRUD ──────────────────────────────────────────────────────────
 
 @app.get("/strategies")
-def list_strategies():
+def list_strategies(current_user: User = Depends(get_current_user)):
     return {"strategies": _strategies}
 
 
 @app.post("/strategies")
-def create_strategy(body: dict):
+def create_strategy(body: dict, current_user: User = Depends(get_current_user)):
     global _next_id
     strategy = {
         "id": _next_id,
@@ -185,7 +233,7 @@ def create_strategy(body: dict):
 
 
 @app.put("/strategies/{strategy_id}")
-def update_strategy(strategy_id: int, body: dict):
+def update_strategy(strategy_id: int, body: dict, current_user: User = Depends(get_current_user)):
     for s in _strategies:
         if s["id"] == strategy_id:
             for key in ("name", "description", "status", "type", "params"):
@@ -196,7 +244,7 @@ def update_strategy(strategy_id: int, body: dict):
 
 
 @app.patch("/strategies/{strategy_id}/toggle")
-def toggle_strategy(strategy_id: int):
+def toggle_strategy(strategy_id: int, current_user: User = Depends(get_current_user)):
     for s in _strategies:
         if s["id"] == strategy_id:
             s["status"] = "paused" if s["status"] == "active" else "active"
@@ -205,7 +253,7 @@ def toggle_strategy(strategy_id: int):
 
 
 @app.delete("/strategies/{strategy_id}")
-def delete_strategy(strategy_id: int):
+def delete_strategy(strategy_id: int, current_user: User = Depends(get_current_user)):
     global _strategies
     _strategies = [s for s in _strategies if s["id"] != strategy_id]
     return {"success": True}
@@ -215,6 +263,7 @@ def delete_strategy(strategy_id: int):
 
 @app.get("/market-data")
 def get_market_data(
+    current_user: User = Depends(get_current_user),
     symbol: str = Query("000001"),
     startDate: str = Query("2024-01-01"),
     endDate: str = Query("2024-01-25"),
@@ -236,6 +285,7 @@ def get_market_data(
 
 @app.get("/backtest")
 def run_backtest(
+    current_user: User = Depends(get_current_user),
     symbol: str = Query("000001"),
     startDate: str = Query("2024-01-01"),
     endDate: str = Query("2024-06-30"),
@@ -341,6 +391,7 @@ def run_backtest(
 
 @app.get("/risk-analysis")
 def risk_analysis(
+    current_user: User = Depends(get_current_user),
     symbol: str = Query("000001"),
     startDate: str = Query("2024-01-01"),
     endDate: str = Query("2024-06-30"),
