@@ -9,6 +9,7 @@ import DataViewer from './pages/DataViewer'
 import BacktestResults from './pages/BacktestResults'
 import RiskAnalysis from './pages/RiskAnalysis'
 import Documentation from './pages/Documentation'
+import Watchlist from './pages/Watchlist'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -50,6 +51,7 @@ function AppLayout() {
             <Route path="/backtest" element={<BacktestResults />} />
             <Route path="/risk" element={<RiskAnalysis />} />
             <Route path="/docs" element={<Documentation />} />
+            <Route path="/watchlist" element={<Watchlist />} />
           </Routes>
         </main>
       </div>

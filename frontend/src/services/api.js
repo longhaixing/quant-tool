@@ -5,6 +5,8 @@ import {
   MARKET_DATA_MOCK,
   BACKTEST_MOCK,
   RISK_ANALYSIS_MOCK,
+  WATCHLIST_MOCK,
+  CHART_MOCK,
 } from './mockData'
 
 const api = axios.create({
@@ -145,6 +147,38 @@ export async function fetchBacktestResults(params = {}) {
 }
 
 export { api }
+
+// ─── Watchlist ──────────────────────────────────────────────────────
+
+export async function fetchWatchlist() {
+  try {
+    const res = await api.get('/watchlist')
+    return res.data
+  } catch (error) {
+    console.warn('API /watchlist unavailable, using mock data:', error.message)
+    return WATCHLIST_MOCK
+  }
+}
+
+export async function addToWatchlist(symbol) {
+  const res = await api.post('/watchlist', { symbol: symbol.toUpperCase() })
+  return res.data
+}
+
+export async function removeFromWatchlist(symbol) {
+  await api.delete(`/watchlist/${symbol.toUpperCase()}`)
+  return true
+}
+
+export async function fetchSymbolChart(symbol, range = '1m') {
+  try {
+    const res = await api.get(`/watchlist/${symbol}/chart`, { params: { range } })
+    return res.data
+  } catch (error) {
+    console.warn(`API /watchlist/${symbol}/chart unavailable, using mock data:`, error.message)
+    return { symbol, ...CHART_MOCK, total: CHART_MOCK.data.length }
+  }
+}
 
 // ─── Risk Analysis ───────────────────────────────────────────────────
 

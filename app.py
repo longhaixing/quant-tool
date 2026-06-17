@@ -19,6 +19,7 @@ from quant_tool.auth import (
     get_current_user,
     get_optional_user,
     get_user_repo,
+    WatchlistStore,
     User,
 )
 
@@ -37,6 +38,7 @@ risk_manager = RiskManager()
 
 # ─── Auth setup ──────────────────────────────────────────────────────────────
 user_repo = get_user_repo()
+watchlist_store = WatchlistStore()
 # Seed a default admin user (exists only after first registration)
 # Run once: POST /auth/register with {"username":"admin","password":"admin123"}
 
@@ -526,6 +528,112 @@ def risk_analysis(
             "correlationMatrix": correlationMatrix,
             "warnings": warnings,
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Watchlist ────────────────────────────────────────────────────────────────
+
+@app.get("/watchlist")
+def list_watchlist(current_user: User = Depends(get_current_user)):
+    """Return the current user's watchlist with latest price info."""
+    items = watchlist_store.list_symbols(current_user.id)
+    enriched = []
+    for item in items:
+        symbol = item["symbol"]
+        name = fetcher.get_stock_name(symbol) or symbol
+        latest_price = None
+        change_pct = None
+        try:
+            end = datetime.now().strftime("%Y-%m-%d")
+            start = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+            df = _get_or_fetch(symbol, start, end)
+            if not df.empty:
+                latest = df.iloc[-1]
+                latest_price = round(float(latest["close"]), 2)
+                if len(df) >= 2:
+                    prev = df.iloc[-2]["close"]
+                    change_pct = round((float(latest["close"]) - float(prev)) / float(prev) * 100, 2)
+        except Exception:
+            pass
+        enriched.append({
+            "symbol": symbol,
+            "name": name,
+            "price": latest_price,
+            "change": change_pct,
+            "added_at": item["added_at"],
+        })
+    return {"items": enriched, "total": len(enriched)}
+
+
+@app.post("/watchlist")
+def add_to_watchlist(body: dict, current_user: User = Depends(get_current_user)):
+    symbol = body.get("symbol", "").strip().upper()
+    if not symbol:
+        raise HTTPException(status_code=400, detail="Symbol is required")
+    ok = watchlist_store.add_symbol(current_user.id, symbol)
+    if not ok:
+        raise HTTPException(status_code=409, detail="Symbol already in watchlist")
+    return {"symbol": symbol, "success": True}
+
+
+@app.delete("/watchlist/{symbol}")
+def remove_from_watchlist(symbol: str, current_user: User = Depends(get_current_user)):
+    symbol = symbol.upper().strip()
+    ok = watchlist_store.remove_symbol(current_user.id, symbol)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Symbol not found in watchlist")
+    return {"symbol": symbol, "success": True}
+
+
+_RANGE_MAP = {
+    "1d": 5,
+    "1w": 10,
+    "1m": 40,
+    "1y": 400,
+}
+
+
+@app.get("/watchlist/{symbol}/chart")
+def get_symbol_chart(
+    symbol: str,
+    current_user: User = Depends(get_current_user),
+    range: str = "1m",
+):
+    """Return OHLCV data for charting over a given time range.
+    
+    For range=1d, returns hourly intraday data.
+    For others (1w/1m/1y), returns daily data.
+    """
+    sym = symbol.upper()
+    try:
+        if range == "1d":
+            # Intraday (hourly bars)
+            df = fetcher.fetch_intraday(sym, period="60")
+            if df.empty:
+                # Fallback to daily if intraday unavailable
+                end = datetime.now().strftime("%Y-%m-%d")
+                start = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
+                df = _get_or_fetch(sym, start, end)
+        else:
+            days = _RANGE_MAP.get(range, 40)
+            end = datetime.now().strftime("%Y-%m-%d")
+            start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            df = _get_or_fetch(sym, start, end)
+
+        if df.empty:
+            return {"symbol": symbol, "data": [], "total": 0}
+        data = []
+        for _, row in df.iterrows():
+            data.append({
+                "date": str(row["date"]),
+                "open": round(float(row["open"]), 2),
+                "high": round(float(row["high"]), 2),
+                "low": round(float(row["low"]), 2),
+                "close": round(float(row["close"]), 2),
+                "volume": int(row["volume"]),
+            })
+        return {"symbol": symbol, "data": data, "total": len(data)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

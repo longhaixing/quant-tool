@@ -8,9 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-from passlib.context import CryptContext
-
-_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt as _bcrypt
 
 _DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
 _DB_PATH = os.path.join(_DB_DIR, "users.db")
@@ -29,12 +27,12 @@ class User:
         return cls(
             id=id,
             username=username,
-            password_hash=_pwd_ctx.hash(password),
+            password_hash=_bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode(),
             role=role,
         )
 
     def verify_password(self, password: str) -> bool:
-        return _pwd_ctx.verify(password, self.password_hash)
+        return _bcrypt.checkpw(password.encode(), self.password_hash.encode())
 
 
 class UserRepository:
@@ -102,3 +100,57 @@ class UserRepository:
         if user and user.verify_password(password):
             return user
         return None
+
+
+class WatchlistStore:
+    _WL_DB_PATH = os.path.join(_DB_DIR, "watchlist.db")
+
+    def __init__(self):
+        os.makedirs(_DB_DIR, exist_ok=True)
+        self._conn = sqlite3.connect(self._WL_DB_PATH, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA foreign_keys=ON")
+        self._init_schema()
+
+    def _init_schema(self):
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS watchlist (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id  INTEGER NOT NULL,
+                symbol   TEXT    NOT NULL,
+                added_at TEXT    NOT NULL,
+                UNIQUE(user_id, symbol)
+            )
+        """)
+        self._conn.commit()
+
+    def list_symbols(self, user_id: int) -> list[dict]:
+        cur = self._conn.execute(
+            "SELECT symbol, added_at FROM watchlist WHERE user_id = ? ORDER BY added_at DESC",
+            (user_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def add_symbol(self, user_id: int, symbol: str) -> bool:
+        symbol = symbol.upper().strip()
+        if not symbol:
+            return False
+        try:
+            self._conn.execute(
+                "INSERT INTO watchlist (user_id, symbol, added_at) VALUES (?, ?, ?)",
+                (user_id, symbol, datetime.now(timezone.utc).isoformat()),
+            )
+            self._conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False  # already in watchlist
+
+    def remove_symbol(self, user_id: int, symbol: str) -> bool:
+        symbol = symbol.upper().strip()
+        cur = self._conn.execute(
+            "DELETE FROM watchlist WHERE user_id = ? AND symbol = ?",
+            (user_id, symbol),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0

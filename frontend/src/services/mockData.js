@@ -143,3 +143,35 @@ export const RISK_ANALYSIS_MOCK = {
     },
   ],
 }
+
+export const WATCHLIST_MOCK = {
+  items: [
+    { symbol: '000001', name: '平安银行', price: 15.82, change: 2.35, added_at: '2026-04-01T00:00:00' },
+    { symbol: '600519', name: '贵州茅台', price: 1685.50, change: -0.82, added_at: '2026-04-01T00:00:00' },
+    { symbol: '000858', name: '五 粮 液', price: 128.30, change: 1.15, added_at: '2026-04-02T00:00:00' },
+    { symbol: '300750', name: '宁德时代', price: 218.60, change: 3.42, added_at: '2026-04-03T00:00:00' },
+  ],
+  total: 4,
+}
+
+const _generateMockChartData = (days) => {
+  const data = []
+  const basePrice = 15.0
+  const now = new Date()
+  for (let i = days; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    const dateStr = d.toISOString().slice(0, 10)
+    const drift = Math.sin(i * 0.3) * 2 + (Math.random() - 0.5) * 1.5
+    const open = +(basePrice + drift).toFixed(2)
+    const close = +(basePrice + drift + (Math.random() - 0.5) * 0.8).toFixed(2)
+    const high = +(Math.max(open, close) + Math.random() * 0.5).toFixed(2)
+    const low = +(Math.min(open, close) - Math.random() * 0.5).toFixed(2)
+    data.push({ date: dateStr, open, high, low, close, volume: Math.floor(Math.random() * 10000000) })
+  }
+  return data
+}
+
+export const CHART_MOCK = {
+  data: _generateMockChartData(40),
+}

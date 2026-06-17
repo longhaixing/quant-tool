@@ -1,6 +1,7 @@
 """Data-fetcher package — akshare A-share stock data."""
 
 from typing import List
+import pandas as pd
 
 from .base import DataSource
 from .akshare_source import AkShareSource
@@ -21,6 +22,12 @@ class DataFetcher:
         self, symbol: str, start_date: str, end_date: str, interval: str = "1d",
     ):
         return self._adapter.fetch(symbol, start_date, end_date, interval)
+
+    def get_stock_name(self, symbol: str) -> str | None:
+        return self._adapter.get_stock_name(symbol)
+
+    def fetch_intraday(self, symbol: str, period: str = "60") -> pd.DataFrame:
+        return self._adapter.fetch_intraday(symbol, period)
 
     def fetch_multiple_symbols(
         self, symbols: List[str], start_date: str, end_date: str,

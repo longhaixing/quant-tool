@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BarChart3, TrendingUp, Database, LineChart, AlertTriangle, Book, X } from 'lucide-react'
+import { BarChart3, TrendingUp, Database, LineChart, AlertTriangle, Book, Star, X } from 'lucide-react'
 
 function Sidebar({ open, onToggle }) {
   const location = useLocation()
@@ -9,6 +9,7 @@ function Sidebar({ open, onToggle }) {
     { path: '/', icon: BarChart3, label: '仪表板' },
     { path: '/strategies', icon: TrendingUp, label: '策略管理' },
     { path: '/data', icon: Database, label: '数据查看' },
+    { path: '/watchlist', icon: Star, label: '自选股' },
     { path: '/backtest', icon: LineChart, label: '回测结果' },
     { path: '/risk', icon: AlertTriangle, label: '风险分析' },
     { path: '/docs', icon: Book, label: '文档' },
